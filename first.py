@@ -6,21 +6,25 @@ from sklearn.metrics import mean_absolute_error
 import joblib
 
 # Load your dataset
-# Assuming you have a CSV file with relevant data
-data = pd.read_csv('power_load_data.csv')
+data_path = 'C:/Users/shail/OneDrive/Desktop/GIT/Dataset/2022-01-01_2022-12-31.csv'
+data = pd.read_csv(data_path)
 
 # Preprocess the data
-# Convert date to datetime
-data['date'] = pd.to_datetime(data['date'])
+# Convert datetime to datetime with dayfirst=True
+data['datetime'] = pd.to_datetime(data['datetime'], dayfirst=True)
 
-# Extract features from the date
-data['day_of_week'] = data['date'].dt.dayofweek
-data['month'] = data['date'].dt.month
-data['hour'] = data['date'].dt.hour
+# Extract features from the datetime
+data['day_of_week'] = data['datetime'].dt.dayofweek
+data['month'] = data['datetime'].dt.month
+data['hour'] = data['datetime'].dt.hour
 
 # Select features and target variable
-features = ['temperature', 'humidity', 'wind_speed', 'day_of_week', 'month', 'hour', 'holiday', 'real_estate_development']
-target = 'power_load'
+features = ['temp', 'humidity', 'windspeed', 'day_of_week', 'month', 'hour']
+target = 'power_load'  # Assuming 'power_load' is the target column
+
+# Ensure the target column exists
+if target not in data.columns:
+    raise KeyError(f"The column '{target}' does not exist in the dataset.")
 
 X = data[features]
 y = data[target]
@@ -32,23 +36,10 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 model = RandomForestRegressor(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
 
-# Make predictions
-y_pred = model.predict(X_test)
-
 # Evaluate the model
+y_pred = model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
 print(f'Mean Absolute Error: {mae}')
 
-# Save the model for future use
+# Save the model
 joblib.dump(model, 'power_load_model.pkl')
-
-# Function to predict power load
-def predict_power_load(features):
-    model = joblib.load('power_load_model.pkl')
-    prediction = model.predict([features])
-    return prediction
-
-# Example usage
-example_features = [30, 50, 10, 2, 7, 15, 0, 1]  # Example feature values
-predicted_load = predict_power_load(example_features)
-print(f'Predicted Power Load: {predicted_load}')
