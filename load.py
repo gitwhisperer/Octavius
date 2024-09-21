@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 import joblib
@@ -31,24 +31,35 @@ data['hour'] = data['datetime'].dt.hour
 features = ['temp', 'humidity', 'windspeed', 'day_of_week', 'month', 'hour']
 target = 'power_load'  # Assuming 'power_load' is the target column in the power load dataset
 
-# Ensure the target column exists
-if target not in data.columns:
-    raise KeyError(f"The column '{target}' does not exist in the dataset.")
-
 X = data[features]
 y = data[target]
 
 # Split the data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Train a Random Forest model
-model = RandomForestRegressor(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+# Hyperparameter tuning using GridSearchCV
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+grid_search = GridSearchCV(estimator=RandomForestRegressor(random_state=42), param_grid=param_grid, cv=3, n_jobs=-1, verbose=2)
+grid_search.fit(X_train, y_train)
+
+# Train the best model
+best_model = grid_search.best_estimator_
+best_model.fit(X_train, y_train)
 
 # Evaluate the model
-y_pred = model.predict(X_test)
+y_pred = best_model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
-print(f'Mean Absolute Error: {mae}')
+mean_actual = np.mean(y_test)
+percentage_error = (mae / mean_actual) * 100
 
-# Save the model
-joblib.dump(model, 'power_load_model.pkl')
+print(f'Mean Absolute Error: {mae}')
+print(f'Percentage Error: {percentage_error:.2f}%')
+
+# Save the best model
+joblib.dump(best_model, 'power_load_model.pkl')
